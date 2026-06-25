@@ -1,59 +1,48 @@
-# 🚀 Project Name
+# 🗺️ Prophet Nexus
 
-[![GitHub License](https://img.shields.io/github/license/username/repo-name)](LICENSE)
-[![GitHub Issues](https://img.shields.io/github/issues/username/repo-name)](https://github.com/username/repo-name/issues)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/username/repo-name/ci.yml)](https://github.com/username/repo-name/actions)
+An interactive, holographic 3D and geographical data visualization dashboard tracking prophetic trajectories, historical eras, divine missions, and migration data across antiquity.
 
-> A concise, one-sentence high-impact description of what this project does and why it matters.
+![Three.js](https://img.shields.io/badge/3D%20Engine-Three.js-00ffff?style=for-the-badge&logo=three.js&logoColor=white)
+![Leaflet.js](https://img.shields.io/badge/Mapping-Leaflet.js-green?style=for-the-badge&logo=leaflet&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 ---
 
-## 🗺️ Table of Contents
+## 🌌 Overview
 
-- [Features](#-features)
-- [Architecture & Tech Stack](#-architecture--tech-stack)
-- [Getting Started](#-getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Configuration](#configuration)
-- [Usage Examples](#-usage-examples)
-- [Running Tests](#-running-tests)
-- [Contributing](#-contributing)
-- [License](#-license)
+**Prophet Nexus** is a self-contained, high-performance web dashboard that bridges data visualization and historical narrative. It maps biographical data, spatial coordinates, and severe milestones of 25 historical prophets into a multi-dimensional interface.
+
+The application features an automated, clockwise-orbiting 3D node network alongside an on-demand geographical mapping system utilizing customized high-contrast color filtration layers.
 
 ---
 
 ## ✨ Features
 
-- **Core Feature A**: Brief description of the benefit and capabilities.
-- **Performance Booster B**: Built with efficiency or sub-second speeds in mind.
-- **Secure & Modular**: Secure defaults following standard engineering paradigms.
+- **Dynamic 3D Orbital Network Grid**: An interactive WebGL environment using **Three.js** that arranges prophets symmetrically along a circular radius, automatically rotating in a continuous clockwise direction.
+- **Enlarged Canvas Sprite Textures**: High-visibility node annotations mapping custom unicode symbols and vector typography elements natively over floating node elements.
+- **On-Demand "Reveal" Mapping Panel**: Integrated **Leaflet.js** framework designed to stay entirely hidden by default to maximize 3D screen real estate. The geographical coordinate workspace cleanly slides open into focus only when explicitly triggered via the card interface.
+- **Luminous Cyber-Aesthetic Skin**: Custom graphical CSS filter structures overlaying tile servers (`hue-rotate`, `contrast`, and `saturate`) to establish a continuous dark cybernetic control room palette.
+- **Holographic Bio-Cards**: Fully scrollable detailed overlay tracking segmented historical datasets:
+  - 🗺️ Precise Coordinates & Ancestral Regional Lands
+  - ✦ Divine Purpose & Prophetic Mission Statement
+  - 📜 Key Structural Accomplishments & Miracles
+  - 🎯 Severe Hardships & Historical Obstacles Faced
 
 ---
 
-## 🛠️ Architecture & Tech Stack
+## 🛠️ Architecture & Core Technologies
 
-- **Frontend/UI**: [React](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/)
-- **Backend Core**: [Node.js](https://nodejs.org/), [Express](https://expressjs.com/)
-- **Database/Caching**: [PostgreSQL](https://www.postgresql.org/), [Redis](https://redis.io/)
-- **DevOps/CI**: Docker, GitHub Actions
+- **Graphics Core**: Three.js (r128) via WebGL canvas contexts
+- **Geospatial Engine**: Leaflet.js (v1.9.4) linked with high-contrast CartoDB tile variants
+- **Interface Structure**: Semantic HTML5, CSS Variables, and Flexbox Splitting Layouts
+- **Data Source**: Comprehensive structured JSON-array schema containing localized coordinate fields (`lat`/`lon`), eras, matching text matrices, and unicode keys.
 
 ---
 
 ## 🏁 Getting Started
 
-Follow these instructions to set up the project locally on your machine for development and testing.
+Because **Prophet Nexus** is built using zero-dependency pure frontend vanilla architectures, running the environment locally is simple.
 
 ### Prerequisites
+You only need a modern web browser supporting WebGL (Chrome, Edge, Firefox, or Safari).
 
-List any software, runtimes, or command-line tools required before starting:
-- Node.js (v18.x or higher)
-- npm (v9.x or higher) or yarn
-- Docker Desktop (Optional, for database containers)
-
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/username/repo-name.git](https://github.com/username/repo-name.git)
-   cd repo-name
