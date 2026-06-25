@@ -1,0 +1,650 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>Prophetic Trajectories · Blueprint Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Georgia:ital@0;1&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: #040d1a;
+            color: #f0f4ff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ----- TIMELINE BAR ----- */
+        .timeline-wrapper {
+            flex-shrink: 0;
+            background: rgba(4, 18, 36, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid rgba(45, 212, 191, 0.15);
+            padding: 0.7rem 0.8rem;
+            overflow-x: auto;
+            position: relative;
+            z-index: 10;
+            scrollbar-width: thin;
+        }
+        .timeline-wrapper::-webkit-scrollbar { height: 5px; }
+        .timeline-wrapper::-webkit-scrollbar-thumb { background: #2dd4bf; border-radius: 10px; }
+
+        .timeline-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: max-content;
+            padding: 0.1rem 0.3rem;
+        }
+
+        .timeline-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 0.5rem 0.7rem;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            background: rgba(255, 255, 255, 0.03);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 75px;
+        }
+        .timeline-node:hover {
+            background: rgba(45, 212, 191, 0.08);
+            border-color: rgba(45, 212, 191, 0.3);
+            transform: translateY(-2px);
+        }
+        .timeline-node.active {
+            border-color: #2dd4bf;
+            background: rgba(45, 212, 191, 0.15);
+            box-shadow: 0 0 15px rgba(45, 212, 191, 0.25);
+        }
+        .timeline-node .symbol-grid { 
+            font-size: 1.3rem; 
+            margin-bottom: 4px; 
+            display: inline-block;
+            line-height: 1;
+        }
+        .timeline-node .tname {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #94a3b8;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .timeline-node.active .tname { color: #ffffff; }
+
+        /* ----- SPLIT WORKSPACE ----- */
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* 3D Panel Viewport */
+        .viewport-3d {
+            flex: 1.5;
+            position: relative;
+            background: radial-gradient(ellipse at 50% 30%, #081e36, #030a14 85%);
+            overflow: hidden;
+        }
+        #three-canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+        #three-canvas:active { cursor: grabbing; }
+
+        /* Geographical Map Panel */
+        .map-panel {
+            width: 0%;
+            position: relative;
+            background: #0d1e2d;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            border-left: 0px solid rgba(45, 212, 191, 0.2);
+            overflow: hidden;
+        }
+        .map-panel.visible {
+            width: 45%;
+            border-left: 2px solid rgba(45, 212, 191, 0.3);
+        }
+        #prophetMap { width: 100%; height: 100%; }
+
+        .leaflet-tile-pane { 
+            filter: hue-rotate(145deg) brightness(0.85) saturate(1.5) contrast(1.1); 
+        }
+
+        /* ----- HOLOGRAPHIC DETAIL CARD ----- */
+        .holographic-card {
+            position: absolute;
+            top: 50%;
+            left: 25%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: min(480px, 85vw);
+            max-height: 85vh;
+            background: rgba(4, 16, 33, 0.96);
+            backdrop-filter: blur(30px);
+            border: 2px solid rgba(45, 212, 191, 0.25);
+            border-radius: 24px;
+            padding: 1.6rem;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.85), 0 0 50px rgba(45, 212, 191, 0.1);
+            z-index: 25;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+            overflow-y: auto;
+        }
+        .holographic-card.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .card-close {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .card-close:hover { color: #f43f5e; }
+
+        .card-header { display: flex; align-items: center; gap: 14px; margin-bottom: 1rem; }
+        .card-header .symbol-big { font-size: 2.6rem; line-height: 1; }
+        .card-header h2 { font-family: 'Georgia', serif; font-size: 1.65rem; color: #fbbf24; }
+        .card-header .era { font-size: 0.78rem; color: #60a5fa; font-weight: 600; margin-top: 2px; }
+
+        /* RED TRIGGER MAP ACTION BUTTON */
+        .map-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            background: #dc2626;
+            color: #ffffff;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            margin-bottom: 1.2rem;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+        }
+        .map-action-btn:hover {
+            background: #b91c1c;
+            transform: translateY(-1px);
+        }
+
+        .info-segment {
+            margin-bottom: 0.8rem;
+            padding: 0.6rem 0.8rem;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+        }
+        .info-segment.mission { border-left: 3px solid #2dd4bf; background: rgba(45, 212, 191, 0.02); }
+        .info-segment.accomplishment { border-left: 3px solid #3b82f6; background: rgba(59, 130, 246, 0.02); }
+        .info-segment.hardship { border-left: 3px solid #f43f5e; background: rgba(244, 63, 94, 0.02); }
+        
+        .segment-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            margin-bottom: 3px;
+            display: block;
+        }
+        .info-segment.mission .segment-label { color: #2dd4bf; }
+        .info-segment.accomplishment .segment-label { color: #60a5fa; }
+        .info-segment.hardship .segment-label { color: #fb7185; }
+        
+        .segment-text { font-size: 0.78rem; line-height: 1.5; color: #e2e8f0; }
+
+        .hint-overlay {
+            position: absolute;
+            bottom: 16px;
+            left: 20px;
+            font-size: 0.65rem;
+            color: #94a3b8;
+            background: rgba(4, 13, 26, 0.75);
+            padding: 6px 14px;
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: 5;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .leaflet-popup-content-wrapper { 
+            background: #07192c; 
+            color: #ffffff; 
+            border: 2px solid #2dd4bf; 
+            border-radius: 12px;
+        }
+        .leaflet-popup-tip { background: #07192c; border: 1px solid #2dd4bf; }
+        .popup-title { color: #fbbf24; font-weight: 700; font-size: 0.95rem; display: block; }
+
+        @media (max-width: 900px) {
+            .workspace { flex-direction: column; }
+            .map-panel.visible { width: 100%; height: 45%; }
+            .holographic-card { left: 50%; top: 45%; width: 90vw; max-height: 55vh; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="timeline-wrapper">
+        <div class="timeline-container" id="timelineContainer"></div>
+    </div>
+
+    <div class="workspace">
+        <div class="viewport-3d" id="viewport3D">
+            <canvas id="three-canvas"></canvas>
+            <div class="hint-overlay">✦ Drag to Orbit | Click 3D Nodes or Timeline to open Card</div>
+            
+            <div class="holographic-card" id="holographicCard">
+                <button class="card-close" onclick="closeCard()">✕</button>
+                <div id="cardContent"></div>
+            </div>
+        </div>
+
+        <div class="map-panel" id="mapPanel">
+            <div id="prophetMap"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const prophets = [
+            { id: "adam", name: "Adam", era: "Beginning of Creation", lat: 32.46, lon: 44.40, region: "Mesopotamia", symbol: "👤", 
+              purpose: "To act as God’s first vicegerent (Khalifah) on Earth and establish the foundational worship of One God (Quran 2:30).", 
+              accomplishments: "Taught the inner names and essences of all things; foundational father of humanity (Quran 2:31, Genesis 2).", 
+              hardships: "Deceived by Iblis; expelled from Paradise to endure physical labor; grieved the tragic murder of his son Abel (Quran 7:22, Genesis 3-4)." },
+            
+            { id: "idris", name: "Idris (Enoch)", era: "Pre-Flood Era", lat: 30.04, lon: 31.23, region: "Babylon / Egypt", symbol: "✏️", 
+              purpose: "To guide early human generations back to primordial monotheism and civilized moral living.", 
+              accomplishments: "Recognized as the first to write with a pen, master astronomy, sew garments, and implement systematic measures (Quran 19:56).", 
+              hardships: "Faced persistent mocking, hatred, and social rejection by early idolators; forced to migrate under threat from Babylon to Egypt." },
+            
+            { id: "nuh", name: "Nuh (Noah)", era: "~3000 BCE", lat: 37.31, lon: 44.15, region: "Mount Judi / Iraq", symbol: "⛵", 
+              purpose: "Sent to a profoundly corrupt society to end the systemic worship of stone idols.", 
+              accomplishments: "Designed and built the Ark (Safinah) under precise divine revelation; preserved baseline terrestrial and animal life (Quran 11:37, Genesis 6).", 
+              hardships: "Preached for 950 years to face nothing but continuous public mockery; suffered the painful rejection of his own wife and son who drowned (Quran 11:43)." },
+            
+            { id: "hud", name: "Hud (Eber)", era: "Post-Flood Era", lat: 16.05, lon: 49.95, region: "Southern Arabia (ʿĀd)", symbol: "🏜️", 
+              purpose: "Sent to the physical giants and advanced builders of the ʿĀd civilization to condemn absolute tyranny and materialism.", 
+              accomplishments: "Fearlessly stood as a beacon of justice against an empire built on monumental security systems, preserving a small remnant of believers.", 
+              hardships: "Endured systematic gaslighting, accusations of insanity, and a punishing multi-year drought before the city was leveled by a barren wind (Quran 46:24)." },
+            
+            { id: "saleh", name: "Saleh (Shelah)", era: "Ancient Antiquity", lat: 26.80, lon: 37.95, region: "Mada'in Saleh (Thamud)", symbol: "⛰️", 
+              purpose: "Dispatched to the elite mountain-carvers of Thamud to challenge systemic corporate greed and class oppression.", 
+              accomplishments: "Brought forth a massive, living She-Camel directly out of a solid rock mountain face as a dynamic warning sign (Quran 17:59).", 
+              hardships: "Corrupt oligarchy targeted and brutally killed the sacred camel, plotting his assassination before an explosive volcanic blast overthrew them (Quran 27:49)." },
+            
+            { id: "ibrahim", name: "Ibrahim (Abraham)", era: "~2000 BCE", lat: 31.52, lon: 35.09, region: "Ur / Hebron", symbol: "⭐", 
+              purpose: "The Patriarch of Monotheism; tasked with destroying pantheism and re-establishing absolute Tawheed.", 
+              accomplishments: "Survived a public execution fire; built the foundations of the Kaaba with Ismail; foundational axis of world monotheism (Quran 2:127, Genesis 12).", 
+              hardships: "Confronted the tyrant Nimrod; cast out by his own father; commanded to leave his infant son in a waterless wasteland; tested with sacrificing his son." },
+            
+            { id: "lut", name: "Lut (Lot)", era: "~1900 BCE", lat: 31.20, lon: 35.45, region: "Sodom & Gomorrah", symbol: "🔥", 
+              purpose: "Sent to the aggressive cities of the Jordan Plain to combat institutionalized sexual violence and predatory highway robbery.", 
+              accomplishments: "Maintained a pure, undefiled sanctuary of hospitality; protected angelic messengers from a violent, predatory mob (Quran 11:78, Genesis 19).", 
+              hardships: "Faced daily psychological trauma from his lawless citizens; suffered the betrayal of his wife who leaked internal data to the corrupt mob." },
+            
+            { id: "ismail", name: "Ismail (Ishmael)", era: "~1900 BCE", lat: 21.42, lon: 39.82, region: "Makkah (Hejaz)", symbol: "💧", 
+              purpose: "Co-established the sacred rites of pilgrimage and laid down civilized monotheism among early Arabian tribes.", 
+              accomplishments: "Willingly submitted to the supreme test of sacrifice; struck open the perpetual Well of Zamzam; co-constructed the Kaaba (Quran 37:102).", 
+              hardships: "Abandoned as a nursing infant alongside his mother in a completely barren, boiling valley; laid his head down under his father's blade." },
+            
+            { id: "ishaq", name: "Ishaq (Isaac)", era: "~1900 BCE", lat: 31.60, lon: 34.80, region: "Canaan / Palestine", symbol: "📜", 
+              purpose: "Sent to preserve, protect, and pass down the Abrahamic legacy and lineage across the early Levant.", 
+              accomplishments: "Granted as a miraculous joy to an elderly, barren mother (Sarah); forefather of the monumental Israelite prophetic tree (Quran 37:112, Genesis 21).", 
+              hardships: "Lived through constant regional migrations; spent his life managing volatile, aggressive border disputes over local wells and pastoral grazing areas." },
+            
+            { id: "yaqub", name: "Yaqub (Jacob)", era: "~1800 BCE", lat: 32.22, lon: 35.26, region: "Canaan / Egypt", symbol: "👁️", 
+              purpose: "Patriarch of the Twelve Tribes of Israel; taught his lineage the art of beautiful endurance (Sabrun Jameel).", 
+              accomplishments: "Anchored the ancestral Israelite framework; successfully navigated his entire tribal household into safe refuge in Egypt (Quran 12:99, Genesis 46).", 
+              hardships: "Suffered the devastating, decades-long psychological weight of losing his beloved son Joseph; wept until he went completely blind." },
+            
+            { id: "yusuf", name: "Yusuf (Joseph)", era: "~1700 BCE", lat: 30.05, lon: 31.25, region: "Egypt", symbol: "👑", 
+              purpose: "To showcase flawless moral integrity and administer economic survival during global geopolitical collapse.", 
+              accomplishments: "Deciphered the King's state dreams; engineered regional agriculture to survive a 7-year famine; rose from slave to Grand Vizier (Quran 12:55, Genesis 41).", 
+              hardships: "Betrayed and thrown into a well by jealous brothers; sold as a commodity; framed by an elite woman; spent years in a dark, forgotten prison cell." },
+            
+            { id: "shuyayb", name: "Shu'ayb (Jethro)", era: "~1500 BCE", lat: 28.52, lon: 34.82, region: "Midian", symbol: "⚖️", 
+              purpose: "Sent to the commercial crossroads of Midian to enforce rigorous marketplace ethics and stop economic fraud.", 
+              accomplishments: "Codified honest weights, measures, and cross-border trades; provided strategic sanctuary and mentorship to a fleeing Moses (Exodus 2).", 
+              hardships: "Faced direct threats of total military exile or stoning by wealthy mercantilist cartels; watched his entire unrepentant city crushed by a seismic earthquake." },
+            
+            { id: "ayyub", name: "Ayyub (Job)", era: "~1500 BCE", lat: 32.70, lon: 36.10, region: "Levant", symbol: "🌱", 
+              purpose: "Sent to serve as humanity's living archetype of pure patience, gratitude, and internal resilience under physical breakdown.", 
+              accomplishments: "Endured immense loss without ever turning bitter; struck the earth to unveil a refreshing, miraculous healing water well (Quran 38:42, Book of Job).", 
+              hardships: "Lost his vast agricultural empires, livestock, and all children in a single day; endured an agonizing, skin-decaying disease for years in isolation." },
+            
+            { id: "musa", name: "Musa (Moses)", era: "~1300 BCE", lat: 28.50, lon: 34.43, region: "Egypt / Sinai", symbol: "🌿", 
+              purpose: "The Kalimullah (Spoken to by God); sent to shatter Pharaoh's deified autocracy and liberate the captive Israelites.", 
+              accomplishments: "Parted the Red Sea; brought Egypt's empire down with 9 plagues; received the physical Torah tablets directly on Mount Sinai (Quran 20, Exodus).", 
+              hardships: "Hunted by imperial armies; faced armed rebellions, golden-calf apostasy, and relentless structural complaints from the very people he emancipated." },
+            
+            { id: "harun", name: "Harun (Aaron)", era: "~1300 BCE", lat: 29.55, lon: 34.95, region: "Egypt / Sinai", symbol: "🗣️", 
+              purpose: "Appointed as Moses’ co-prophet, chief diplomatic voice, and structural High Priest to stabilize the community.", 
+              accomplishments: "Acted as the articulate, essential orator before Pharaoh's court; successfully maintained structural communal baseline during Moses' ascents.", 
+              hardships: "Nearly beaten to death by his own volatile community when they rebelled to construct and worship the golden calf idol (Quran 7:150)." },
+            
+            { id: "dhulkifl", name: "Dhu'l-Kifl (Ezekiel)", era: "~600 BCE", lat: 32.40, lon: 44.30, region: "Babylon", symbol: "🛡️", 
+              purpose: "Sent to maintain spiritual law, absolute justice, and psychological hope among Israelite captives during the Babylonian Exile.", 
+              accomplishments: "Governed and protected his displaced community under strict moral codes; guaranteed double rewards for patient exiles (Quran 21:85, Ezekiel).", 
+              hardships: "Endured the bitter structural realities of captivity, cultural erasure attempts by Babylon, and the psychological trauma of a broken homeland." },
+            
+            { id: "dawud", name: "Dawud (David)", era: "~1000 BCE", lat: 31.77, lon: 35.22, region: "Jerusalem", symbol: "⚔️", 
+              purpose: "Sent as a righteous Warrior-King to unify the fractured tribes and merge temporal state power with divine law.", 
+              accomplishments: "Toppled the giant tyrant Goliath; received the Zabur (Psalms); blessed with hands that could physically mold solid iron (Quran 34:10, 1 Samuel).", 
+              hardships: "Hunted across caverns by a jealous King Saul; faced ongoing geopolitical coups and complex betrayals from within his own inner cabinets." },
+            
+            { id: "sulaiman", name: "Sulaiman (Solomon)", era: "~970 BCE", lat: 31.78, lon: 35.23, region: "Jerusalem", symbol: "🏰", 
+              purpose: "King-Prophet gifted with absolute sovereignty over unseen realms to demonstrate God’s cosmic administrative majesty.", 
+              accomplishments: "Constructed the First Holy Temple; commanded winds; controlled legions of Jinn; spoke fluent animal languages (Quran 27:16, 1 Kings).", 
+              hardships: "Tested severely with unmatched power and wealth; faced malicious sorcery fabrications by defectors; survived temporary loss of his royal seal/throne." },
+            
+            { id: "ilyas", name: "Ilyas (Elijah)", era: "~850 BCE", lat: 32.50, lon: 35.60, region: "Northern Israel", symbol: "🏹", 
+              purpose: "Sent to King Ahab’s court to destroy the pagan cult of Baal and halt widespread structural moral corruption.", 
+              accomplishments: "Invoked a multi-year drought that proved pagan deities powerless; performed miraculous food and oil multiplications (Quran 37:123, 1 Kings 17).", 
+              hardships: "Hunted like an animal by the state under the orders of Queen Jezebel; spent years hiding in deep, freezing mountain caves to avoid execution." },
+            
+            { id: "alyasa", name: "Al-Yasa (Elisha)", era: "~800 BCE", lat: 32.20, lon: 35.30, region: "Palestine / Syria", symbol: "🌾", 
+              purpose: "Successor to Ilyas; tasked with upholding prophetic guidance during an era of extreme royal decay.", 
+              accomplishments: "Purified toxic water supplies; miraculously cured lepers; accurately guided defensive regional military defenses (Quran 6:86, 2 Kings).", 
+              hardships: "Faced relentless mockery from cynical generations; forced to constantly manage corrupt, shifting kings who routinely defied warning protocols." },
+            
+            { id: "yunus", name: "Yunus (Jonah)", era: "~800 BCE", lat: 36.34, lon: 43.13, region: "Nineveh (Iraq)", symbol: "🐋", 
+              purpose: "Sent to warn the massive, aggressive Assyrian metropolis of Nineveh of imminent, complete divine destruction.", 
+              accomplishments: "The only prophet in history whose entire city (100,000+ citizens) collectively repented and halted their doom (Quran 10:98, Book of Jonah).", 
+              hardships: "Overwhelmed by initial failure, he fled via sea; thrown overboard into a raging storm; spent days trapped in the suffocating belly of a giant fish." },
+            
+            { id: "zakariyya", name: "Zakariyya (Zechariah)", era: "~50 BCE", lat: 31.76, lon: 35.21, region: "Jerusalem", symbol: "🌲", 
+              purpose: "High Priest of the Temple; tasked with safeguarding Maryam and maintaining standard liturgical worship.", 
+              accomplishments: "Miraculously fathered Yahya despite his extreme old age and his wife's lifetime infertility (Quran 19:9, Luke 1).", 
+              hardships: "Suffered through years of quiet agony watching the complete moral decay of religious elites; ultimately hunted down by state forces." },
+            
+            { id: "yahya", name: "Yahya (John the Baptist)", era: "Early 1st Century CE", lat: 31.81, lon: 35.54, region: "Jordan River", symbol: "🪵", 
+              purpose: "An ascetic prophet chosen from infancy to announce absolute truth and herald the immediate arrival of the Messiah.", 
+              accomplishments: "Renowned for radical empathy and scriptural command; baptized and verified Jesus' true identity (Quran 19:12, Matthew 3).", 
+              hardships: "Imprisoned in a desert fortress for condemning King Herod's unlawful marital alignments; brutally martyred by state beheading." },
+            
+            { id: "isa", name: "'Isa (Jesus)", era: "c. 4 BCE – 30 CE", lat: 31.70, lon: 35.20, region: "Nazareth / Jerusalem", symbol: "🕊️", 
+              purpose: "The Al-Masih (Messiah); sent to revive the internal spirit of the Law and deliver the Injeel (Gospel).", 
+              accomplishments: "Spoke inside the cradle; healed the born-blind and lepers; raised the dead; raised alive into the heavens (Quran 3:49, The Gospels).", 
+              hardships: "Denounced as a sorcerer and fraud by local religious councils; betrayed by an inner circle disciple; hunted by Roman cohorts to be executed." },
+            
+            { id: "muhammad", name: "Muhammad", era: "570 – 632 CE", lat: 21.42, lon: 39.82, region: "Makkah / Madinah", symbol: "🕌", 
+              purpose: "The Khatam an-Nabiyyin (Seal of the Prophets); sent as a comprehensive universal mercy to all mankind and the Jinn.", 
+              accomplishments: "Delivered the Holy Quran; united fractured tribes; successfully cleared the Kaaba of pagan idols; established an enduring global civilization.", 
+              hardships: "Orphaned early; stoned at Ta'if; starved during a 3-year economic blockade; survived assassination vectors; buried almost all of his children." }
+        ];
+
+        let currentIndex = 0;
+        let scene, camera, renderer, raycaster, mouse;
+        let prophetMeshes = [];
+        let map, mapMarkers = [];
+        let isDragging = false;
+        let prevMouse = { x: 0, y: 0 };
+        let controls = { target: new THREE.Vector3(0, 0, 0), theta: 0, phi: 0.4, radius: 9 };
+
+        const timelineContainer = document.getElementById('timelineContainer');
+        const cardElement = document.getElementById('holographicCard');
+        const cardContent = document.getElementById('cardContent');
+        const mapPanel = document.getElementById('mapPanel');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderTimeline();
+            initLeafletMap();
+            initThreeDGrid();
+            selectProphet(0);
+        });
+
+        function renderTimeline() {
+            prophets.forEach((p, idx) => {
+                const node = document.createElement('div');
+                node.className = 'timeline-node';
+                node.id = `node-${idx}`;
+                node.onclick = () => {
+                    selectProphet(idx);
+                    openHolographicCard(idx);
+                };
+                node.innerHTML = `
+                    <div class="symbol-grid">${p.symbol}</div>
+                    <div class="tname">${p.name}</div>
+                `;
+                timelineContainer.appendChild(node);
+            });
+        }
+
+        function initLeafletMap() {
+            map = L.map('prophetMap', { center: [26.0, 38.0], zoom: 4 });
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CartoDB'
+            }).addTo(map);
+
+            prophets.forEach((p, idx) => {
+                const marker = L.marker([p.lat, p.lon]).addTo(map)
+                    .bindPopup(`<span class="popup-title">${p.symbol} ${p.name}</span>`);
+                mapMarkers.push(marker);
+            });
+        }
+
+        function initThreeDGrid() {
+            const container = document.getElementById('viewport3D');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x040d1a);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            const gridHelper = new THREE.GridHelper(16, 32, 0x2dd4bf, 0x162c46);
+            gridHelper.position.y = -0.5;
+            scene.add(gridHelper);
+
+            scene.add(new THREE.AmbientLight(0x13253e, 2.5));
+            const directionalLight = new THREE.DirectionalLight(0x2dd4bf, 1.8);
+            directionalLight.position.set(5, 12, 5);
+            scene.add(directionalLight);
+
+            const totalNodes = prophets.length;
+            prophets.forEach((p, idx) => {
+                const angle = (idx / totalNodes) * Math.PI * 2;
+                const radius = 5.2; 
+                
+                const group = new THREE.Group();
+                group.position.set(Math.cos(angle) * radius, 0.4, Math.sin(angle) * radius);
+                group.userData = { index: idx, name: p.name };
+
+                const coreMesh = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.25, 16, 16),
+                    new THREE.MeshStandardMaterial({ color: 0x2dd4bf, emissive: 0x2dd4bf, emissiveIntensity: 0.35 })
+                );
+                group.add(coreMesh);
+
+                // Combined Symbol + Text Canvas to fix missing grid symbols (Enlarged fonts)
+                const canvasLabel = document.createElement('canvas');
+                canvasLabel.width = 300; canvasLabel.height = 80;
+                const ctx = canvasLabel.getContext('2d');
+                ctx.fillStyle = '#cbd5e1'; 
+                ctx.font = 'bold 32px sans-serif'; 
+                ctx.textAlign = 'center';
+                ctx.fillText(`${p.symbol} ${p.name}`, 150, 45);
+                
+                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+                    map: new THREE.CanvasTexture(canvasLabel), depthTest: false
+                }));
+                sprite.position.y = 0.8; 
+                sprite.scale.set(3.0, 1.0, 1); // Significantly scaled up size layout
+                group.add(sprite);
+
+                scene.add(group);
+                prophetMeshes.push(group);
+            });
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            const canvasEl = renderer.domElement;
+            canvasEl.addEventListener('mousedown', (e) => { isDragging = true; prevMouse.x = e.clientX; prevMouse.y = e.clientY; });
+            canvasEl.addEventListener('mousemove', onMouseMove);
+            canvasEl.addEventListener('mouseup', () => isDragging = false);
+            canvasEl.addEventListener('click', onClick3DGrid);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Clockwise rotation orbit modifier added here
+                if (!isDragging) {
+                    controls.theta -= 0.002; 
+                    updateCameraPosition();
+                }
+
+                prophetMeshes.forEach((mesh, idx) => {
+                    mesh.position.y = 0.4 + Math.sin(Date.now() * 0.0015 + idx) * 0.05;
+                });
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        function onMouseMove(e) {
+            if (isDragging) {
+                const deltaX = e.clientX - prevMouse.x;
+                const deltaY = e.clientY - prevMouse.y;
+                // Reverse rotation mapping calculation for absolute manual drag parity
+                controls.theta += deltaX * 0.006;
+                controls.phi += deltaY * 0.006;
+                controls.phi = Math.max(0.1, Math.min(1.3, controls.phi));
+                prevMouse.x = e.clientX; prevMouse.y = e.clientY;
+                updateCameraPosition();
+            }
+        }
+
+        function onClick3DGrid(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(prophetMeshes, true);
+
+            if (intersects.length > 0) {
+                let targetGroup = intersects[0].object;
+                while (targetGroup.parent && targetGroup.type !== "Group") {
+                    targetGroup = targetGroup.parent;
+                }
+                const targetIdx = targetGroup.userData.index;
+                selectProphet(targetIdx);
+                openHolographicCard(targetIdx);
+            }
+        }
+
+        function updateCameraPosition() {
+            camera.position.x = controls.radius * Math.sin(controls.theta) * Math.cos(controls.phi);
+            camera.position.y = controls.radius * Math.sin(controls.phi);
+            camera.position.z = controls.radius * Math.cos(controls.theta) * Math.cos(controls.phi);
+            camera.lookAt(controls.target);
+        }
+
+        function selectProphet(index) {
+            currentIndex = index;
+            document.querySelectorAll('.timeline-node').forEach((node, idx) => {
+                node.classList.toggle('active', idx === index);
+            });
+
+            const targetNode = document.getElementById(`node-${index}`);
+            if (targetNode) {
+                targetNode.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+
+            prophetMeshes.forEach((group, idx) => {
+                const active = idx === index;
+                group.scale.setScalar(active ? 1.6 : 1.0);
+                group.children[0].material.color.setHex(active ? 0xfbbf24 : 0x2dd4bf);
+                group.children[0].material.emissiveIntensity = active ? 0.8 : 0.3;
+            });
+        }
+
+        function openHolographicCard(index) {
+            const p = prophets[index];
+            cardContent.innerHTML = `
+                <div class="card-header">
+                    <span class="symbol-big">${p.symbol}</span>
+                    <div>
+                        <h2>${p.name}</h2>
+                        <div class="era">${p.era} · ${p.region}</div>
+                    </div>
+                </div>
+
+                <button class="map-action-btn" onclick="triggerMapReveal(${index})">
+                    🗺️ Open and Focus Map View
+                </button>
+                
+                <div class="info-segment mission">
+                    <span class="segment-label">Divine Purpose & Mission</span>
+                    <div class="segment-text">${p.purpose}</div>
+                </div>
+                
+                <div class="info-segment accomplishment">
+                    <span class="segment-label">Accomplishments & Miracles</span>
+                    <div class="segment-text">${p.accomplishments}</div>
+                </div>
+                
+                <div class="info-segment hardship">
+                    <span class="segment-label">Severe Hardships Faced</span>
+                    <div class="segment-text">${p.hardships}</div>
+                </div>
+            `;
+            cardElement.classList.add('active');
+        }
+
+        function triggerMapReveal(index) {
+            const data = prophets[index];
+            mapPanel.classList.add('visible');
+            
+            setTimeout(() => {
+                map.invalidateSize();
+                map.panTo([data.lat, data.lon], { animate: true, duration: 0.8 });
+                mapMarkers[index].openPopup();
+            }, 300);
+        }
+
+        function closeCard() {
+            cardElement.classList.remove('active');
+            mapPanel.classList.remove('visible');
+            setTimeout(() => { map.invalidateSize(); }, 500);
+        }
+    </script>
+</body>
+</html>
