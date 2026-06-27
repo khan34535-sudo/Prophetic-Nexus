@@ -4,7 +4,7 @@ An interactive, holographic 3D and geographical data visualization dashboard tra
 
 ![Three.js](https://img.shields.io/badge/3D%20Engine-Three.js-00ffff?style=for-the-badge&logo=three.js&logoColor=white)
 ![Leaflet.js](https://img.shields.io/badge/Mapping-Leaflet.js-green?style=for-the-badge&logo=leaflet&logoColor=white)
-![License](https://img.shields.io/badge/License).
+
 
 ---
 
