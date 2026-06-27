@@ -4,7 +4,7 @@ An interactive, holographic 3D and geographical data visualization dashboard tra
 
 ![Three.js](https://img.shields.io/badge/3D%20Engine-Three.js-00ffff?style=for-the-badge&logo=three.js&logoColor=white)
 ![Leaflet.js](https://img.shields.io/badge/Mapping-Leaflet.js-green?style=for-the-badge&logo=leaflet&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
+![License](https://img.shields.io/badge/License).
 
 ---
 
@@ -40,6 +40,19 @@ The application features an automated, clockwise-orbiting 3D node network alongs
 ---
 
 ## 🏁 Getting Started
+
+# Copyright and License
+
+Copyright © 2026. All rights reserved.
+
+This repository and its entire contents—including but not limited to all source code, system architecture designs, user interface layouts, conceptual frameworks, text, graphics, and data structures—are the sole intellectual property of the author.
+
+### Terms of Use:
+* **No Replication:** No part of this project may be copied, reproduced, redistributed, or modified, in whole or in part, without explicit, prior written permission from the copyright holder.
+* **No Commercial Use:** Commercial use of this software, framework, or architecture is strictly prohibited.
+* **Review Only:** Permission is granted solely to view the materials in this public repository for personal evaluation or academic review purposes.
+
+For inquiries or permission requests, please contact the repository owner directly through GitHub.
 
 Because **Prophet Nexus** is built using zero-dependency pure frontend vanilla architectures, running the environment locally is simple.
 
